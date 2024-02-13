@@ -1,0 +1,50 @@
+import imaplib
+import email
+import os
+
+
+def extract_pdfs(date):
+  """Extrae los PDF con el nombre certificado de una fecha específica de un correo de Gmail y los descarga en una carpeta.
+
+  Args:
+    date: La fecha de los PDF que desea extraer.
+
+  Returns:
+    Una lista de las rutas a los archivos PDF extraídos.
+  """
+
+  # Conectarse a Gmail
+  imap = imaplib.IMAP4_SSL("imap.gmail.com")
+  imap.login("your_email_address", "your_password")
+
+  # Seleccionar la carpeta de correo
+  imap.select("Inbox")
+
+  # Obtener los encabezados de los correos electrónicos
+  resp, data = imap.search(None, "SINCE {0}".format(date))
+  email_ids = data[0].split()
+
+  # Iterar sobre los correos electrónicos
+  extracted_pdfs = []
+  for email_id in email_ids:
+    resp, data = imap.fetch(email_id, "(RFC822)")
+    email_message = email.message_from_bytes(data[0])
+
+    # Obtener el archivo adjunto PDF
+    for attachment in email_message.get_payload():
+      if attachment.get_content_type() == "application/pdf":
+        # Guardar el archivo adjunto en una carpeta
+        extracted_pdfs.append(os.path.join("extracted_pdfs", attachment.get_filename()))
+        with open(extracted_pdfs[-1], "wb") as f:
+          f.write(attachment.get_payload(decode=True))
+
+  # Cerrar la conexión a Gmail
+  imap.close()
+  imap.logout()
+
+  return extracted_pdfs
+
+
+# Ejemplo de uso
+extracted_pdfs = extract_pdfs("2023-09-09")
+print(extracted_pdfs)
